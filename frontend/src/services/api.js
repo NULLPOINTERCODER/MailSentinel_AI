@@ -4,7 +4,7 @@ const baseURL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
 
 export const apiClient = axios.create({
   baseURL,
-  timeout: 10000,
+  timeout: 15000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -27,7 +27,6 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      // If token expired or invalid, clear local auth
       if (localStorage.getItem("mailsentinel_token")) {
         localStorage.removeItem("mailsentinel_token");
         localStorage.removeItem("mailsentinel_user");
@@ -38,6 +37,7 @@ apiClient.interceptors.response.use(
   }
 );
 
+// --- Health ---
 export async function fetchHealth() {
   const [backendRes, dbRes] = await Promise.allSettled([
     apiClient.get("/health"),
@@ -50,6 +50,7 @@ export async function fetchHealth() {
   };
 }
 
+// --- Authentication ---
 export async function registerUser(payload) {
   const response = await apiClient.post("/auth/register", payload);
   return response.data;
@@ -62,5 +63,36 @@ export async function loginUser(payload) {
 
 export async function getMe() {
   const response = await apiClient.get("/auth/me");
+  return response.data;
+}
+
+// --- Gmail & Google OAuth ---
+export async function getGoogleOAuthUrl() {
+  const response = await apiClient.get("/api/gmail/oauth/url");
+  return response.data;
+}
+
+export async function handleGoogleOAuthCallback(payload) {
+  const response = await apiClient.post("/api/gmail/oauth/callback", payload);
+  return response.data;
+}
+
+export async function getConnectedAccounts() {
+  const response = await apiClient.get("/api/gmail/accounts");
+  return response.data;
+}
+
+export async function disconnectAccount(accountId) {
+  const response = await apiClient.delete(`/api/gmail/accounts/${accountId}`);
+  return response.data;
+}
+
+export async function testAccountConnection(accountId) {
+  const response = await apiClient.get(`/api/gmail/accounts/${accountId}/test`);
+  return response.data;
+}
+
+export async function fetchUnreadEmails(accountId, maxResults = 10) {
+  const response = await apiClient.get(`/api/gmail/accounts/${accountId}/unread?max_results=${maxResults}`);
   return response.data;
 }
