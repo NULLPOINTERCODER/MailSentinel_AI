@@ -4,7 +4,7 @@ const baseURL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
 
 export const apiClient = axios.create({
   baseURL,
-  timeout: 25000,
+  timeout: 30000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -92,7 +92,7 @@ export async function testAccountConnection(accountId) {
   return response.data;
 }
 
-// --- Email Ingestion & Queries (Phase 4) ---
+// --- Email Ingestion & Queries ---
 export async function syncUserEmails(maxPerAccount = 20) {
   const response = await apiClient.post(`/api/emails/sync?max_per_account=${maxPerAccount}`);
   return response.data;
@@ -110,5 +110,16 @@ export async function getEmailStats() {
 
 export async function getEmailById(emailId) {
   const response = await apiClient.get(`/api/emails/${emailId}`);
+  return response.data;
+}
+
+// --- Groq AI Triage (Phase 5) ---
+export async function triageEmailWithAI(emailId) {
+  const response = await apiClient.post(`/api/ai/triage/${emailId}`);
+  return response.data;
+}
+
+export async function batchTriageWithAI(limit = 10) {
+  const response = await apiClient.post(`/api/ai/batch-triage?limit=${limit}`);
   return response.data;
 }

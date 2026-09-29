@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.schemas.email import EmailResponse, EmailSyncResult, EmailStatsResponse, SignalDetail
+from app.schemas.email import EmailResponse, EmailStatsResponse, EmailSyncResult, SignalDetail
 from app.services.email_account_service import EmailAccountService
 from app.services.email_normalizer import EmailNormalizer
 from app.services.gmail_service import GmailService
@@ -35,6 +35,18 @@ def email_doc_to_response(doc: dict) -> EmailResponse:
         is_potentially_important=doc.get("is_potentially_important", False),
         positive_signals=[SignalDetail(**s) for s in doc.get("positive_signals", [])],
         negative_signals=[SignalDetail(**s) for s in doc.get("negative_signals", [])],
+        # AI Fields
+        ai_processed=doc.get("ai_processed", False),
+        ai_score=doc.get("ai_score"),
+        final_importance=doc.get("final_importance"),
+        category=doc.get("category"),
+        urgency=doc.get("urgency"),
+        action_required=doc.get("action_required"),
+        deadline=doc.get("deadline"),
+        summary=doc.get("summary"),
+        action=doc.get("action"),
+        reason=doc.get("reason"),
+        is_whatsapp_candidate=doc.get("is_whatsapp_candidate"),
         created_at=doc.get("created_at", datetime.now(timezone.utc)),
     )
 
@@ -46,7 +58,6 @@ class EmailService:
         self.account_service = EmailAccountService(db)
 
     async def check_duplicate(self, user_id: str, message_id: str, content_hash: str) -> bool:
-        """Check if an email was already ingested for this user via message_id or content_hash."""
         existing = await self.collection.find_one({
             "user_id": user_id,
             "$or": [
@@ -57,14 +68,11 @@ class EmailService:
         return existing is not None
 
     async def ingest_email(self, user_id: str, account_id: str, raw_email: dict, provider: str = "gmail") -> dict | None:
-        """Normalize, score, and insert a new email if not duplicate."""
         normalized = EmailNormalizer.normalize(raw_email, provider=provider)
 
-        # Check duplicate
         if await self.check_duplicate(user_id, normalized["message_id"], normalized["content_hash"]):
             return None
 
-        # Calculate rule-based importance
         score_result = ImportanceScorer.calculate_rule_score(
             subject=normalized["subject"],
             body_text=normalized["body_text"],
@@ -92,7 +100,6 @@ class EmailService:
         return email_doc
 
     async def sync_user_inboxes(self, user_id: str, max_per_account: int = 20) -> EmailSyncResult:
-        """Fetch unread emails from all connected Gmail accounts and ingest them."""
         accounts = await self.account_service.get_user_accounts(user_id)
         total_fetched = 0
         new_saved = 0
@@ -138,7 +145,6 @@ class EmailService:
         limit: int = 50,
         skip: int = 0,
     ) -> list[dict]:
-        """Fetch filtered and paginated emails for the authenticated user."""
         query = {"user_id": user_id}
         if only_important:
             query["is_potentially_important"] = True
@@ -157,7 +163,6 @@ class EmailService:
         return await cursor.to_list(length=limit)
 
     async def get_email_by_id(self, email_id: str, user_id: str) -> dict | None:
-        """Fetch a single email by MongoDB ObjectId ensuring user_id isolation."""
         if not ObjectId.is_valid(email_id):
             return None
         return await self.collection.find_one({
@@ -166,7 +171,6 @@ class EmailService:
         })
 
     async def get_email_stats(self, user_id: str) -> EmailStatsResponse:
-        """Calculate aggregate statistics for the user's ingested emails."""
         total = await self.collection.count_documents({"user_id": user_id})
         unread = await self.collection.count_documents({"user_id": user_id, "is_unread": True})
         important = await self.collection.count_documents({"user_id": user_id, "is_potentially_important": True})
@@ -174,10 +178,12 @@ class EmailService:
             "user_id": user_id,
             "positive_signals.signal": {"$in": ["offer", "interview", "shortlisted", "security_alert"]},
         })
+        ai_triaged = await self.collection.count_documents({"user_id": user_id, "ai_processed": True})
 
         return EmailStatsResponse(
             total_emails=total,
             unread_emails=unread,
             potentially_important=important,
             critical_signals_detected=critical,
+            ai_triaged_count=ai_triaged,
         )
