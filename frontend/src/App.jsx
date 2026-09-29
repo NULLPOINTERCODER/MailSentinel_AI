@@ -5,6 +5,7 @@ import Home from "./pages/Home.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
+import Emails from "./pages/Emails.jsx";
 import ConnectEmail from "./pages/ConnectEmail.jsx";
 import OAuthCallback from "./pages/OAuthCallback.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
@@ -21,6 +22,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/emails"
+          element={
+            <ProtectedRoute>
+              <Emails />
             </ProtectedRoute>
           }
         />

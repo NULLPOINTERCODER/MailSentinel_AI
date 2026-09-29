@@ -4,7 +4,7 @@ const baseURL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
 
 export const apiClient = axios.create({
   baseURL,
-  timeout: 15000,
+  timeout: 25000,
   headers: {
     "Content-Type": "application/json",
   },
@@ -92,7 +92,23 @@ export async function testAccountConnection(accountId) {
   return response.data;
 }
 
-export async function fetchUnreadEmails(accountId, maxResults = 10) {
-  const response = await apiClient.get(`/api/gmail/accounts/${accountId}/unread?max_results=${maxResults}`);
+// --- Email Ingestion & Queries (Phase 4) ---
+export async function syncUserEmails(maxPerAccount = 20) {
+  const response = await apiClient.post(`/api/emails/sync?max_per_account=${maxPerAccount}`);
+  return response.data;
+}
+
+export async function getEmails(params = {}) {
+  const response = await apiClient.get("/api/emails", { params });
+  return response.data;
+}
+
+export async function getEmailStats() {
+  const response = await apiClient.get("/api/emails/stats/summary");
+  return response.data;
+}
+
+export async function getEmailById(emailId) {
+  const response = await apiClient.get(`/api/emails/${emailId}`);
   return response.data;
 }
