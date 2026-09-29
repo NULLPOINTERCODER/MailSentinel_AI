@@ -94,6 +94,19 @@ class AIPipelineService:
             },
         )
 
+        # 5. Optionally trigger auto WhatsApp alert if candidate
+        if is_whatsapp_candidate:
+            try:
+                from app.services.notification_service import NotificationService
+                notif_service = NotificationService(self.db)
+                await notif_service.send_email_whatsapp_alert(
+                    email_id=str(email_doc["_id"]),
+                    user_id=user_id,
+                    force_resend=False,
+                )
+            except Exception:
+                pass
+
         return EmailTriageResponse(
             email_id=str(email_doc["_id"]),
             message_id=email_doc.get("message_id"),

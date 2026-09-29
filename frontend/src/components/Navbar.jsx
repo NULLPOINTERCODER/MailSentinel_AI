@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Mail, LogOut, LayoutDashboard, Inbox, Plus, User } from "lucide-react";
+import { Mail, LogOut, LayoutDashboard, Inbox, Plus, Bell, Settings as SettingsIcon, User } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 
 export default function Navbar() {
@@ -51,6 +51,28 @@ export default function Navbar() {
                 <span>Inbox Feed</span>
               </Link>
               <Link
+                to="/notifications"
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                  isActive("/notifications")
+                    ? "bg-slate-900 text-indigo-400 border border-slate-800"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <Bell className="h-3.5 w-3.5" />
+                <span>Notifications</span>
+              </Link>
+              <Link
+                to="/settings"
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                  isActive("/settings")
+                    ? "bg-slate-900 text-indigo-400 border border-slate-800"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <SettingsIcon className="h-3.5 w-3.5" />
+                <span>Settings</span>
+              </Link>
+              <Link
                 to="/connect-email"
                 className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
                   isActive("/connect-email")
@@ -59,7 +81,7 @@ export default function Navbar() {
                 }`}
               >
                 <Plus className="h-3.5 w-3.5" />
-                <span>Connect Email</span>
+                <span>Connect</span>
               </Link>
             </nav>
           )}

@@ -8,6 +8,8 @@ import Dashboard from "./pages/Dashboard.jsx";
 import Emails from "./pages/Emails.jsx";
 import ConnectEmail from "./pages/ConnectEmail.jsx";
 import OAuthCallback from "./pages/OAuthCallback.jsx";
+import Notifications from "./pages/Notifications.jsx";
+import Settings from "./pages/Settings.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
 export default function App() {
@@ -30,6 +32,22 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Emails />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <Notifications />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <Settings />
             </ProtectedRoute>
           }
         />

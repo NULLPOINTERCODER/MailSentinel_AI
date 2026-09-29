@@ -25,7 +25,9 @@ import {
   syncUserEmails,
   triageEmailWithAI,
   batchTriageWithAI,
+  sendEmailWhatsAppAlert,
 } from "../services/api.js";
+import { MessageSquare, Send } from "lucide-react";
 
 const categoryColors = {
   INTERVIEW: "bg-purple-500/10 text-purple-400 border-purple-500/30",
@@ -48,6 +50,7 @@ export default function Emails() {
   const [syncing, setSyncing] = useState(false);
   const [triagingId, setTriagingId] = useState(null);
   const [batchTriaging, setBatchTriaging] = useState(false);
+  const [sendingWhatsAppId, setSendingWhatsAppId] = useState(null);
   const [syncMessage, setSyncMessage] = useState(null);
   const [selectedEmail, setSelectedEmail] = useState(null);
 
@@ -139,6 +142,50 @@ export default function Emails() {
       });
     } finally {
       setBatchTriaging(false);
+    }
+  };
+
+  const handleSendWhatsApp = async (e, emailId, force = false) => {
+    if (e) e.stopPropagation();
+    setSendingWhatsAppId(emailId);
+    try {
+      const res = await sendEmailWhatsAppAlert(emailId, force);
+      if (res.status === "SENT") {
+        setSyncMessage({
+          type: "success",
+          text: res.simulated
+            ? "WhatsApp Alert simulated in Dev Mode! (Logged to backend output)."
+            : "WhatsApp Alert successfully dispatched to your phone!",
+        });
+        setEmails((prev) =>
+          prev.map((m) => (m.id === emailId ? { ...m, whatsapp_notified: true } : m))
+        );
+        if (selectedEmail && selectedEmail.id === emailId) {
+          setSelectedEmail((prev) => ({ ...prev, whatsapp_notified: true }));
+        }
+      } else if (res.status === "DUPLICATE") {
+        setSyncMessage({
+          type: "info",
+          text: "Notification was already sent previously for this email.",
+        });
+      } else if (res.status === "SKIPPED") {
+        setSyncMessage({
+          type: "warning",
+          text: `WhatsApp alert skipped: ${res.reason || "Does not meet settings criteria."}`,
+        });
+      } else {
+        setSyncMessage({
+          type: "error",
+          text: res.error || "Failed to dispatch WhatsApp alert.",
+        });
+      }
+    } catch (err) {
+      setSyncMessage({
+        type: "error",
+        text: err.response?.data?.detail || "Failed to send WhatsApp alert.",
+      });
+    } finally {
+      setSendingWhatsAppId(null);
     }
   };
 
@@ -520,10 +567,26 @@ export default function Emails() {
               </div>
             </div>
 
-            <div className="flex justify-end pt-2">
+            <div className="flex items-center justify-between border-t border-slate-800 pt-4">
+              {selectedEmail.ai_processed && (
+                <button
+                  onClick={(e) => handleSendWhatsApp(e, selectedEmail.id, true)}
+                  disabled={sendingWhatsAppId === selectedEmail.id}
+                  className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/20 disabled:opacity-50 transition-all"
+                >
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  <span>
+                    {sendingWhatsAppId === selectedEmail.id
+                      ? "Sending WhatsApp..."
+                      : selectedEmail.whatsapp_notified
+                      ? "Re-send WhatsApp Alert"
+                      : "Send WhatsApp Alert"}
+                  </span>
+                </button>
+              )}
               <button
                 onClick={() => setSelectedEmail(null)}
-                className="rounded-xl bg-slate-800 px-5 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700"
+                className="rounded-xl bg-slate-800 px-5 py-2 text-xs font-semibold text-slate-200 hover:bg-slate-700 ml-auto"
               >
                 Close
               </button>

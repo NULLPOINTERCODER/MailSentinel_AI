@@ -38,6 +38,16 @@ apiClient.interceptors.response.use(
 );
 
 // --- Health ---
+export async function getHealth() {
+  const response = await apiClient.get("/health");
+  return response.data;
+}
+
+export async function getDbHealth() {
+  const response = await apiClient.get("/health/db");
+  return response.data;
+}
+
 export async function fetchHealth() {
   const [backendRes, dbRes] = await Promise.allSettled([
     apiClient.get("/health"),
@@ -123,3 +133,31 @@ export async function batchTriageWithAI(limit = 10) {
   const response = await apiClient.post(`/api/ai/batch-triage?limit=${limit}`);
   return response.data;
 }
+
+// --- Settings & User Preferences (Phase 6) ---
+export async function getUserSettings() {
+  const response = await apiClient.get("/api/settings");
+  return response.data;
+}
+
+export async function updateUserSettings(payload) {
+  const response = await apiClient.put("/api/settings", payload);
+  return response.data;
+}
+
+// --- WhatsApp Notifications (Phase 6) ---
+export async function getNotifications(params = {}) {
+  const response = await apiClient.get("/api/notifications", { params });
+  return response.data;
+}
+
+export async function sendEmailWhatsAppAlert(emailId, forceResend = false) {
+  const response = await apiClient.post(`/api/notifications/send/${emailId}?force_resend=${forceResend}`);
+  return response.data;
+}
+
+export async function testWhatsAppPing(payload) {
+  const response = await apiClient.post("/api/notifications/test-whatsapp", payload);
+  return response.data;
+}
+
