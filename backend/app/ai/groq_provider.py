@@ -36,9 +36,9 @@ class GroqProvider(AIProvider):
 
     def __init__(self, api_key: str | None = None, model: str | None = None):
         settings = get_settings()
-        self.api_key = api_key or settings.groq_api_key
+        self.api_key = api_key if api_key is not None else settings.groq_api_key
         # Default to llama-3.3-70b-versatile or configurable from .env
-        self.model = model or settings.groq_model or "llama-3.3-70b-versatile"
+        self.model = model or settings.groq_model or "openai/gpt-oss-120b"
         self.client = AsyncGroq(api_key=self.api_key) if self.api_key else None
 
     async def analyze_email(

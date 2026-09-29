@@ -94,7 +94,18 @@ class AIPipelineService:
             },
         )
 
-        # 5. Optionally trigger auto WhatsApp alert if candidate
+        # 5. Automatically index/update email in ChromaDB vector store for RAG
+        try:
+            from app.services.rag_service import RAGService
+            rag_svc = RAGService(self.db, ai_provider=self.ai_provider)
+            # Re-fetch updated email doc for indexing
+            updated_doc = await self.emails_col.find_one({"_id": email_doc["_id"]})
+            if updated_doc:
+                await rag_svc.index_single_email(user_id=user_id, email_doc=updated_doc)
+        except Exception as e:
+            logger.warning("Failed to auto-index triaged email into ChromaDB: %s", e)
+
+        # 6. Optionally trigger auto WhatsApp alert if candidate
         if is_whatsapp_candidate:
             try:
                 from app.services.notification_service import NotificationService

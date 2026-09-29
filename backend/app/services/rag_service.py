@@ -140,12 +140,26 @@ class RAGService:
         top_k: int = 5,
     ) -> RAGQueryResponse:
         """Execute semantic search with user_id filter and synthesize grounded answer via Groq."""
+        # Check total emails in MongoDB for this user
+        total_user_emails = await self.emails_col.count_documents({"user_id": user_id})
+        if total_user_emails == 0:
+            return RAGQueryResponse(
+                query=query,
+                answer="You have not ingested any emails yet. Please click 'Simulate Ingestion' on the Dashboard or connect your Gmail account in the Connect tab to populate your inbox.",
+                sources=[],
+                context_emails_count=0,
+            )
+
         # 1. Semantic Search with strict multi-user metadata filtering
-        retrieved_results = self.collection.query(
-            query_texts=[query],
-            n_results=top_k,
-            where={"user_id": user_id},  # MANDATORY SECURITY BOUNDARY
-        )
+        retrieved_results = None
+        try:
+            retrieved_results = self.collection.query(
+                query_texts=[query],
+                n_results=top_k,
+                where={"user_id": user_id},  # MANDATORY SECURITY BOUNDARY
+            )
+        except Exception as e:
+            logger.warning("ChromaDB query encountered issue: %s", e)
 
         sources: list[RAGSourceDocument] = []
         context_blocks = []
@@ -153,6 +167,21 @@ class RAGService:
         doc_ids = []
         if retrieved_results and "ids" in retrieved_results and retrieved_results["ids"]:
             doc_ids = retrieved_results["ids"][0]
+
+        # If vector index returned 0 results but user has emails, auto-index and re-query
+        if not doc_ids and total_user_emails > 0:
+            logger.info("Vector store empty for user %s. Auto-indexing %d emails...", user_id, total_user_emails)
+            await self.reindex_all_user_emails(user_id)
+            try:
+                retrieved_results = self.collection.query(
+                    query_texts=[query],
+                    n_results=top_k,
+                    where={"user_id": user_id},
+                )
+                if retrieved_results and "ids" in retrieved_results and retrieved_results["ids"]:
+                    doc_ids = retrieved_results["ids"][0]
+            except Exception as e:
+                logger.warning("Retry ChromaDB query failed: %s", e)
 
         # 2. If vector DB has matches, fetch rich email documents from MongoDB
         if doc_ids:
@@ -166,7 +195,7 @@ class RAGService:
                     continue
 
                 dist = None
-                if "distances" in retrieved_results and retrieved_results["distances"]:
+                if retrieved_results and "distances" in retrieved_results and retrieved_results["distances"]:
                     dist = round(float(retrieved_results["distances"][0][i]), 3)
 
                 source_item = RAGSourceDocument(
@@ -195,18 +224,25 @@ class RAGService:
                     f"Body: {email_doc.get('body_text', '')[:1000]}\n"
                 )
 
-        # 3. Fallback: if vector index was empty, search MongoDB directly by keyword
+        # 3. Robust Fallback: Keyword search matching any query term or recent emails
         if not sources:
-            cursor = self.emails_col.find({
-                "user_id": user_id,
-                "$or": [
-                    {"subject": {"$regex": query, "$options": "i"}},
-                    {"sender_name": {"$regex": query, "$options": "i"}},
-                    {"body_text": {"$regex": query, "$options": "i"}},
-                ],
-            }).limit(top_k)
+            query_words = [w.strip() for w in query.split() if len(w.strip()) > 2]
+            regex_patterns = [{"subject": {"$regex": w, "$options": "i"}} for w in query_words]
+            regex_patterns += [{"sender_name": {"$regex": w, "$options": "i"}} for w in query_words]
+            regex_patterns += [{"body_text": {"$regex": w, "$options": "i"}} for w in query_words]
+            regex_patterns += [{"summary": {"$regex": w, "$options": "i"}} for w in query_words]
 
+            filter_query = {"user_id": user_id}
+            if regex_patterns:
+                filter_query["$or"] = regex_patterns
+
+            cursor = self.emails_col.find(filter_query).sort("received_at", -1).limit(top_k)
             fb_docs = await cursor.to_list(length=top_k)
+
+            # If still nothing, fetch the latest emails so the LLM can give contextual answer
+            if not fb_docs:
+                fb_docs = await self.emails_col.find({"user_id": user_id}).sort("received_at", -1).limit(top_k).to_list(length=top_k)
+
             for i, doc in enumerate(fb_docs):
                 src = RAGSourceDocument(
                     email_id=str(doc["_id"]),
@@ -225,6 +261,10 @@ class RAGService:
                     f"From: {src.sender}\n"
                     f"Subject: {src.subject}\n"
                     f"Date: {src.received_at}\n"
+                    f"Category: {doc.get('category', 'GENERAL')}\n"
+                    f"AI Summary: {doc.get('summary', 'None')}\n"
+                    f"Deadline: {doc.get('deadline', 'None')}\n"
+                    f"Action: {doc.get('action', 'None')}\n"
                     f"Body: {doc.get('body_text', '')[:1000]}\n"
                 )
 
