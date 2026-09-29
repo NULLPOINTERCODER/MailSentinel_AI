@@ -4,6 +4,7 @@ import {
   getUserSettings,
   updateUserSettings,
   testWhatsAppPing,
+  simulateWhatsAppInbound,
 } from "../services/api.js";
 import {
   Sliders,
@@ -17,6 +18,8 @@ import {
   BellRing,
   Sparkles,
   Zap,
+  Bot,
+  Loader2,
 } from "lucide-react";
 
 const ALL_CATEGORIES = [
@@ -56,6 +59,33 @@ export default function Settings() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [pingStatus, setPingStatus] = useState(null);
   const [error, setError] = useState(null);
+
+  // WhatsApp Bot Simulator State
+  const [simMessage, setSimMessage] = useState("Show important emails");
+  const [simulating, setSimulating] = useState(false);
+  const [simReply, setSimReply] = useState(null);
+
+  const handleSimulateMessage = async () => {
+    if (!settings.whatsapp_phone_number) {
+      setSimReply("⚠️ Please enter and save your WhatsApp phone number above first.");
+      return;
+    }
+    if (!simMessage.trim() || simulating) return;
+
+    setSimulating(true);
+    setSimReply(null);
+    try {
+      const res = await simulateWhatsAppInbound(
+        settings.whatsapp_phone_number.trim(),
+        simMessage.trim()
+      );
+      setSimReply(res.reply || "No response received.");
+    } catch (err) {
+      setSimReply(`⚠️ Simulation error: ${err.response?.data?.detail || "Failed to process message"}`);
+    } finally {
+      setSimulating(false);
+    }
+  };
 
   useEffect(() => {
     loadSettings();
@@ -394,6 +424,70 @@ export default function Settings() {
             </button>
           </div>
         </form>
+
+        {/* WhatsApp Conversational AI Webhook Simulator */}
+        <section className="mt-12 rounded-3xl border border-slate-800 bg-slate-900/50 p-6 shadow-xl backdrop-blur-sm space-y-5">
+          <div className="flex items-center gap-3 border-b border-slate-800/80 pb-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <Bot className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-white">WhatsApp Conversational Bot Simulator</h2>
+              <p className="text-xs text-slate-400">
+                Simulate inbound WhatsApp messages sent from your phone to test the conversational AI agent
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                Quick Test Prompts:
+              </span>
+              {["Show important emails", "Check deadlines", "Summarize recruiters", "Help"].map((cmd) => (
+                <button
+                  key={cmd}
+                  type="button"
+                  onClick={() => setSimMessage(cmd)}
+                  className="rounded-lg border border-slate-800 bg-slate-950 px-2.5 py-1 text-xs text-slate-300 hover:border-emerald-500/40 hover:text-emerald-300 transition-all"
+                >
+                  {cmd}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={simMessage}
+                onChange={(e) => setSimMessage(e.target.value)}
+                placeholder="Type a message (e.g. 'Show important emails' or 'What happened with Google?')"
+                className="flex-1 rounded-xl border border-slate-800 bg-slate-950/80 px-4 py-2.5 text-xs text-white placeholder-slate-600 focus:border-emerald-500 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={handleSimulateMessage}
+                disabled={simulating || !simMessage.trim()}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2 text-xs font-semibold text-white hover:bg-emerald-500 disabled:opacity-50 transition-all shadow-md shadow-emerald-600/20"
+              >
+                {simulating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                <span>Simulate Inbound</span>
+              </button>
+            </div>
+
+            {simReply && (
+              <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-950 p-4 space-y-2">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                  <Bot className="h-3.5 w-3.5" />
+                  <span>WhatsApp Bot Response:</span>
+                </div>
+                <div className="font-mono text-xs text-slate-200 whitespace-pre-wrap leading-relaxed">
+                  {simReply}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
       </main>
     </div>
   );

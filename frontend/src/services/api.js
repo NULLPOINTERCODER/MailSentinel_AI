@@ -172,4 +172,14 @@ export async function reindexUserEmails() {
   return response.data;
 }
 
+// --- WhatsApp Conversational AI Webhook (Phase 10) ---
+export async function simulateWhatsAppInbound(phoneNumber, message) {
+  const response = await apiClient.post("/api/webhook/whatsapp/simulate", {
+    phone_number: phoneNumber,
+    message,
+  });
+  return response.data;
+}
+
+
 

@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import ai, auth, emails, gmail, health, notifications, rag, settings
+from app.api import ai, auth, emails, gmail, health, notifications, rag, settings, webhook
 from app.core.config import get_settings
 from app.core.database import close_mongo, connect_to_mongo
 
@@ -37,6 +37,7 @@ def create_app() -> FastAPI:
     app.include_router(rag.router)
     app.include_router(notifications.router)
     app.include_router(settings.router)
+    app.include_router(webhook.router)
     return app
 
 
