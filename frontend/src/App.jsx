@@ -44,6 +44,7 @@ export default function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/ask-ai" element={<Navigate to="/ask" replace />} />
         <Route
           path="/notifications"
           element={

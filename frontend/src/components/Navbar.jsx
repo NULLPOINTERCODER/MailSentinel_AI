@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Mail, LogOut, LayoutDashboard, Inbox, Plus, Bell, Settings as SettingsIcon, User } from "lucide-react";
+import { Mail, LogOut, LayoutDashboard, Inbox, Plus, Bell, Settings as SettingsIcon, User, Sparkles } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 
 export default function Navbar() {
