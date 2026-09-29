@@ -62,3 +62,8 @@ class EmailStatsResponse(BaseModel):
     potentially_important: int
     critical_signals_detected: int
     ai_triaged_count: int = 0
+    high_importance_count: int = 0
+    notifications_sent: int = 0
+    active_deadlines_count: int = 0
+    category_breakdown: dict[str, int] = {}
+

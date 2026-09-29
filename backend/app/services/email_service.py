@@ -179,6 +179,36 @@ class EmailService:
             "positive_signals.signal": {"$in": ["offer", "interview", "shortlisted", "security_alert"]},
         })
         ai_triaged = await self.collection.count_documents({"user_id": user_id, "ai_processed": True})
+        high_importance = await self.collection.count_documents({
+            "user_id": user_id,
+            "$or": [
+                {"final_importance": {"$gte": 80}},
+                {"rule_score": {"$gte": 80}},
+            ],
+        })
+        deadlines_count = await self.collection.count_documents({
+            "user_id": user_id,
+            "deadline": {"$ne": None, "$exists": True},
+        })
+
+        notifs_count = await self.db["notifications"].count_documents({
+            "user_id": user_id,
+            "status": "SENT",
+        })
+
+        # Category Breakdown counting
+        cat_breakdown = {}
+        try:
+            cursor = self.collection.find(
+                {"user_id": user_id, "category": {"$ne": None}},
+                {"category": 1},
+            )
+            async for doc in cursor:
+                cat = doc.get("category")
+                if cat:
+                    cat_breakdown[cat] = cat_breakdown.get(cat, 0) + 1
+        except Exception:
+            pass
 
         return EmailStatsResponse(
             total_emails=total,
@@ -186,4 +216,8 @@ class EmailService:
             potentially_important=important,
             critical_signals_detected=critical,
             ai_triaged_count=ai_triaged,
+            high_importance_count=high_importance,
+            notifications_sent=notifs_count,
+            active_deadlines_count=deadlines_count,
+            category_breakdown=cat_breakdown,
         )
