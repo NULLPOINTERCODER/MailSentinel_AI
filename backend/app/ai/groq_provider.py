@@ -4,7 +4,12 @@ import re
 from groq import AsyncGroq
 
 from app.ai.base import AIProvider
-from app.ai.prompts import EMAIL_ANALYSIS_SYSTEM_PROMPT, EMAIL_ANALYSIS_USER_TEMPLATE
+from app.ai.prompts import (
+    EMAIL_ANALYSIS_SYSTEM_PROMPT,
+    EMAIL_ANALYSIS_USER_TEMPLATE,
+    RAG_QUERY_SYSTEM_PROMPT,
+    RAG_QUERY_USER_TEMPLATE,
+)
 from app.core.config import get_settings
 from app.schemas.ai import AIAnalysisResult, EmailCategory, UrgencyLevel
 
@@ -73,6 +78,36 @@ class GroqProvider(AIProvider):
         except Exception as exc:
             logger.error("Groq API error during email analysis: %s. Using heuristic fallback.", exc)
             return self._heuristic_fallback(sender, subject, body_text)
+
+    async def answer_rag_query(
+        self,
+        query: str,
+        context: str,
+    ) -> str:
+        """Synthesize a factual, grounded answer using retrieved email context."""
+        if not self.client:
+            logger.warning("GROQ_API_KEY is not set. Generating mock/fallback answer.")
+            return (
+                f"Based on your retrieved emails, here is the relevant context found for '{query}':\n\n"
+                f"{context[:400]}...\n\n"
+                f"*(Configure GROQ_API_KEY in .env for full Groq LLM synthesis)*"
+            )
+
+        user_content = RAG_QUERY_USER_TEMPLATE.format(query=query, context=context)
+
+        try:
+            chat_completion = await self.client.chat.completions.create(
+                messages=[
+                    {"role": "system", "content": RAG_QUERY_SYSTEM_PROMPT},
+                    {"role": "user", "content": user_content},
+                ],
+                model=self.model,
+                temperature=0.2,
+            )
+            return chat_completion.choices[0].message.content or "No response generated."
+        except Exception as e:
+            logger.error("Groq RAG query error: %s", e)
+            return f"Error querying Groq AI: {str(e)}"
 
     def _heuristic_fallback(self, sender: str, subject: str, body: str) -> AIAnalysisResult:
         """Safe heuristic fallback if Groq API is temporarily unreachable or unconfigured."""

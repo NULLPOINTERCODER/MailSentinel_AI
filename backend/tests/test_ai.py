@@ -104,6 +104,10 @@ class MockAIProvider(AIProvider):
             reason="Email contains an interview invitation with strict deadline.",
         )
 
+    async def answer_rag_query(self, query: str, context: str) -> str:
+        return f"Mock RAG Answer for: {query}"
+
+
 
 @pytest.fixture
 def mock_db():

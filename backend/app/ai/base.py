@@ -15,3 +15,13 @@ class AIProvider(ABC):
     ) -> AIAnalysisResult:
         """Analyze an email and return structured category, importance, summary, action, and deadline."""
         raise NotImplementedError
+
+    @abstractmethod
+    async def answer_rag_query(
+        self,
+        query: str,
+        context: str,
+    ) -> str:
+        """Answer a natural language question using retrieved email context without hallucination."""
+        raise NotImplementedError
+

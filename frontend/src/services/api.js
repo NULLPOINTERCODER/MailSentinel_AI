@@ -161,3 +161,15 @@ export async function testWhatsAppPing(payload) {
   return response.data;
 }
 
+// --- RAG over Historical Emails (Phase 9) ---
+export async function queryEmailKnowledge(query, topK = 5) {
+  const response = await apiClient.post("/api/rag/query", { query, top_k: topK });
+  return response.data;
+}
+
+export async function reindexUserEmails() {
+  const response = await apiClient.post("/api/rag/reindex");
+  return response.data;
+}
+
+

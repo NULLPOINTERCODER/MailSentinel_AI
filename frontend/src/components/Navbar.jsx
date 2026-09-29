@@ -51,6 +51,17 @@ export default function Navbar() {
                 <span>Inbox Feed</span>
               </Link>
               <Link
+                to="/ask"
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                  isActive("/ask")
+                    ? "bg-slate-900 text-indigo-400 border border-slate-800"
+                    : "text-slate-400 hover:text-white"
+                }`}
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>Ask AI (RAG)</span>
+              </Link>
+              <Link
                 to="/notifications"
                 className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
                   isActive("/notifications")

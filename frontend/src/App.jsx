@@ -10,6 +10,7 @@ import ConnectEmail from "./pages/ConnectEmail.jsx";
 import OAuthCallback from "./pages/OAuthCallback.jsx";
 import Notifications from "./pages/Notifications.jsx";
 import Settings from "./pages/Settings.jsx";
+import AskAI from "./pages/AskAI.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
 export default function App() {
@@ -32,6 +33,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <Emails />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/ask"
+          element={
+            <ProtectedRoute>
+              <AskAI />
             </ProtectedRoute>
           }
         />
