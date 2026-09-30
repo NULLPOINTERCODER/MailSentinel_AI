@@ -135,17 +135,20 @@ class AIPipelineService:
         )
 
     async def batch_triage_user_emails(self, user_id: str, limit: int = 10) -> list[EmailTriageResponse]:
-        """Triage pending potentially important emails for the user."""
+        """Triage pending emails for the user, prioritizing highest rule scores first."""
+        # First try potentially important unprocessed emails
         cursor = self.emails_col.find({
             "user_id": user_id,
             "ai_processed": {"$ne": True},
-            "is_potentially_important": True,
-        }).limit(limit)
+        }).sort("rule_score", -1).limit(limit)
 
         pending_emails = await cursor.to_list(length=limit)
         results = []
         for doc in pending_emails:
-            res = await self.triage_email(str(doc["_id"]), user_id)
-            if res:
-                results.append(res)
+            try:
+                res = await self.triage_email(str(doc["_id"]), user_id)
+                if res:
+                    results.append(res)
+            except Exception as e:
+                logger.error("Error triaging email %s: %s", doc.get("_id"), e)
         return results

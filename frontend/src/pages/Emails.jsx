@@ -135,17 +135,25 @@ export default function Emails() {
 
   const handleBatchAITriage = async () => {
     setBatchTriaging(true);
+    setSyncMessage(null);
     try {
       const results = await batchTriageWithAI(10);
-      setSyncMessage({
-        type: "success",
-        text: `Groq AI batch triage completed for ${results.length} emails.`,
-      });
+      if (results.length === 0) {
+        setSyncMessage({
+          type: "info",
+          text: "All emails in your inbox have already been analyzed and triaged by Groq AI.",
+        });
+      } else {
+        setSyncMessage({
+          type: "success",
+          text: `Groq AI batch triage completed for ${results.length} email(s)! Importance scores and deadlines updated.`,
+        });
+      }
       loadData();
     } catch (err) {
       setSyncMessage({
         type: "error",
-        text: err.response?.data?.detail || "Batch AI triage failed.",
+        text: err.response?.data?.detail || "Batch AI triage failed. Please check Groq API key or try again.",
       });
     } finally {
       setBatchTriaging(false);
