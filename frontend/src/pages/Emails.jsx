@@ -94,13 +94,20 @@ export default function Emails() {
     setSyncMessage(null);
     try {
       const result = await syncUserEmails(25);
-      setSyncMessage({
-        type: "success",
-        text: `Sync finished: ${result.new_emails_saved} new emails ingested, ${result.duplicates_skipped} duplicates skipped. (${result.potentially_important} flagged potentially important).`,
-      });
+      if (result.synced_accounts === 0) {
+        setSyncMessage({
+          type: "info",
+          text: "No connected email accounts found for this user. Please go to the Connect tab and click 'Connect Gmail Account' first.",
+        });
+      } else {
+        setSyncMessage({
+          type: "success",
+          text: `Sync finished: ${result.new_emails_saved} new emails ingested, ${result.duplicates_skipped} duplicates skipped (${result.potentially_important} flagged potentially important) from ${result.synced_accounts} connected account(s).`,
+        });
+      }
       loadData();
     } catch (err) {
-      const msg = err.response?.data?.detail || "Failed to synchronize connected inboxes.";
+      const msg = err.response?.data?.detail || "Failed to synchronize connected inboxes. Please ensure your Gmail account is connected.";
       setSyncMessage({ type: "error", text: msg });
     } finally {
       setSyncing(false);
